@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+        <meta charset="utf-8">
+        <title>Weiterführende Schulen in der Nähe von Würselen</title>
+        <script src="angular.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script type="text/javascript" charset="utf8" src="//cdn.datatables.net/1.10.16/js/jquery.dataTables.js"></script>
+        <link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.16/css/jquery.dataTables.css">
+        <script src="locations.js"></script>
+        <script src="schulen.js"></script>
+
+        <style> 
+
+         .wrapper, html, body {
+             padding: 0px;
+             margin: 0px;
+             height: 100%;
+         }
+
+         .wrapper {
+             display: flex;
+             flex-direction: column;
+         }
+
+         #navigation {
+             margin: 0;
+             padding:0;
+             background-color:#bdbdbd;
+             width: 100%;
+             padding: 5px 0 5px 0;
+         }
+         
+         .navItem {
+             float: left;
+             height: 32px;
+             background-color: #b3e5fc;
+             border: 1px solid black;
+             padding: 0 15px 0 15px;
+             margin: 0px 0px 0px 15px;
+             line-height: 32px;
+         }
+
+         #content {
+             flex: 2;
+             display: flex;
+             margin: 0;
+             padding:0;
+             width: 100%;
+         }
+
+         #mapContainer {
+             margin:0;
+             padding: 0;
+             width:100%;
+             height: 100%;
+         }
+
+         #map { 
+             background-color: lightblue;
+             width: 100%;
+             height: 100%;
+         }
+         
+         #legend {
+             font-family: Arial, sans-serif;
+             background: #fff;
+             padding: 10px;
+             margin: 10px;
+             border: 3px solid black;
+         }
+         
+         #legend h3 {
+             margin-top: 0;
+         }
+         
+         #legend img {
+             vertical-align: middle;
+         }
+
+         #schuldb {
+             width: 100%;
+         }
+
+         #formsContainer {
+             padding: 0;
+             margin: 0;
+             width:100%;
+             height:100%;
+             flex 1 1 auto;
+             display: flex;
+         }
+
+         #inputForm {
+             background-color: #b3e5fc;
+             padding: 15px;
+             float: left;
+             flex 0 0 240px;
+         }
+
+         #coordPicker {
+             float: left;
+             height: 100%;
+             width: 100%;
+             flex 1 1;
+         }
+
+        </style>
+    </head>
+
+    <body ng-app="wfMap" ng-controller="appCtrl">
+        <div class="wrapper">
+            <div id="navigation">
+                <div class="navItem" ng-click="showMap()">Karte</div>
+                <div class="navItem" ng-click="showTable()">Datenbasis</div>
+                <div class="navItem" ng-click="showForm()">Neuer Eintrag</div>
+            </div>
+
+            <div id="content">
+                <div id="mapContainer" ng-hide="navIndex!=0" >
+                    <div id="map"></div>
+                    <div id="legend"><h3>Legende</h3></div>
+                </div>
+                <div id="tableContainer" ng-hide="navIndex!=1">
+                    <table id="schuldb" class="display">
+                        <thead>
+                            <tr>
+                                <th>Schule</th>
+                                <th>Koordinaten</th>
+                                <th>Webseite</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="formsContainer" ng-hide="navIndex!=2">
+                    <div id="inputForm">
+                        <form novalidate class="simple-form">
+                            <label>Name: <input type="text" ng-model="school.name" /></label><br />
+                            <label>Latitude: <input type="text" ng-model="school.lat" /></label><br />
+                            <label>Longitude: <input type="text" ng-model="school.lng" /></label><br />
+                            <label>Website: <input type="text" ng-model="school.url" /></label><br />
+                            Schulform: <label><input type="radio" ng-model="school.typ" value="gymnasium" />Gymnasium</label><br />
+
+                            <label><input type="radio" ng-model="school.typ" value="gs" />Gesamtschule</label><br />
+                            <input type="button" ng-click="reset()" value="Reset" />
+                            <input type="submit" ng-click="submit()" value="Save" />
+                        </form>
+                        <pre>Neuer Eintrag = {{school | json}}</pre>
+                    </div>
+                    <div id="coordPicker"></div>
+                </div>
+            </div>
+        </div>
+        <script async defer
+                src="https://maps.googleapis.com/maps/api/js?key=______API_KEY_HERE_______&callback=initMainMap"></script>
+
+        <script>
+
+         var app = angular.module('wfMap', []);
+         var datatable = undefined;
+         var newSchool = {
+             'lat': 0.0,
+             'lng': 0.0,
+             'name': "",
+             'typ': "",
+             'url': ""
+         };
+
+         app.controller('appCtrl', function($scope) {
+
+             $scope.school = newSchool;
+
+             $scope.navIndex=0;
+
+             $scope.showMap = function() {
+                 $scope.navIndex=0;
+             }
+
+             $scope.showTable = function() {
+                 $scope.navIndex=1;
+                 $("#schuldb").css('width', '100%');
+             }
+
+             $scope.showForm = function() {
+                 $scope.navIndex=2;
+             }
+
+             $scope.submit = function( school ) {
+                 locations.splice(0, 0, JSON.parse(JSON.stringify(newSchool)));
+                 datatable.clear();
+                 datatable.rows.add(locations);
+                 datatable.draw();
+                 $scope.reset();
+             }
+
+             $scope.reset = function() {
+                 newSchool.lat = 0.0;
+                 newSchool.lng = 0.0;
+                 newSchool.name = "";
+                 newSchool.url = "";
+                 newSchool.typ = "";
+             }
+         });
+
+         $(".navItem").hover( function() {
+             $(this).css("background-color", "#ff4081");
+         }, function() {
+             $(this).css("background-color", "#b3e5fc");
+         });
+
+         $(document).ready( function () {
+             datatable = $('#schuldb').DataTable(
+                 {
+                     autoWidth: false,
+                     paging: false,
+                     data: locations,
+                     columns: [
+                         {
+                             data: 'name',
+                             width: "50%"
+                         },
+                         {
+                             data: 'Koordinaten',
+                             render: function( data, type, row) {
+                                 return 'lat=' + row['lat'] + ', ' + 'lng=' + row['lng'];
+                             },
+                             width: "25%"
+                         },
+                         {
+                             data: 'url',
+                             render: function(data, type, row) {
+                                 return "<a href=\"" + data + "\">" + data + "</a>";
+                             },
+                             width: "25%"
+                             
+                         }
+                     ]
+                 }
+             );
+             
+         } );
+
+        </script>
+    </body>
+</html>

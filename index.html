@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+        <meta charset="utf-8">
+        <title>Marker Clustering</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.6/angular.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>        
+        <link rel="stylesheet" href="//cdn.datatables.net/1.10.15/css/jquery.dataTables.min.css" />
+        <script src="//cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+        <script async defer
+                src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAk2R2Mz0wcPeCSXaoqgs3cloYb1ZZgZuw&callback=initMap">
+        </script>
+        <script src="jquery-ui-1.12.0.js"></script>        
+        <link rel="stylesheet" href="jquery-ui-1.12.0.css" />
+        <style> 
+         /* Always set the map height explicitly to define the size of the div
+          * element that contains the map. */
+         #map {
+             height: 400px;
+             width: 400px;
+         }
+         /* Optional: Makes the sample page fill the window. */
+         html, body {
+             height: 100%;
+             margin: 0;
+             padding: 0;
+         }
+         #tablayout {
+             width:100%
+         }
+        </style>
+    </head>
+
+    <body ng-app="mapExplorer" ng-controller="mapCtrl">
+
+        <table id="tablayout" style="width:100%">
+            <tr>
+                <td style="vertial-align:top; padding: 25px 25px 0 25px">
+                    <div id="map"></div>
+                </td>
+                <td style="vertical-align:top; padding: 25px 25px 0 25px">
+                    <table id="locations" class="display">
+                        <thead>
+                            <tr>
+                                <th>Latitude</th>
+                                <th>Longitude</th>
+                                <th>City</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <div>zoom level = {{ zoom }}</div>
+        <div id="wikiInfo">&nbsp;</div>
+
+        
+        <script>
+
+         var map = undefined;
+
+         var poly;
+
+         var locations = [
+             {"lat": "50.7764", "lng": "6.08342", "city": "Aachen", "zoom": 9},
+             {"lat": "50.81809", "lng": "6.1347", "city": "Würselen", "zoom": 9},
+             {"lat": "52.521918", "lng": "13.413215", "city": "Berlin", "zoom": 9},
+             {"lat": "53.551086", "lng": "9.993682", "city": "Hamburg", "zoom": 9},
+             {"lat": "50.941357", "lng": "6.958307", "city": "Köln", "zoom": 9},
+             {"lat": "50.110924", "lng": "8.682127", "city": "Frankfurt", "zoom": 9},
+             {"lat": "48.137154", "lng": "11.576124", "city": "München", "zoom": 9},
+             {"lat": "51.22172", "lng": "6.77616", "city": "Düsseldorf", "zoom": 9},
+             {"lat": "51.050407", "lng": "13.73762", "city": "Dresden", "zoom": 9},
+             {"lat": "51.343479", "lng": "12.387772", "city": "Leipzig", "zoom": 9}
+         ];
+
+         locations.sort( function(p, q) {
+             if (p['lng'] < 9.99 && q['lng'] < 9.99)
+                 return p['lat'] < q['lat'];
+             if (p['lng'] > 9.99 && q['lng'] > 9.99)
+                 return p['lat'] < q['lat'];
+             if (p['lng'] < 9.99) {
+                 return -1;
+             } else {
+                 return 1;
+             }
+         });
+
+
+         function initMap() {
+
+             map = new google.maps.Map(document.getElementById('map'), {
+                 zoom: 8,
+                 center: {lat: 50.7764, lng: 6.08342}
+             });
+
+             poly = new google.maps.Polyline({
+                 strokeColor: '#000000',
+                 strokeOpacity: 1.0,
+                 strokeWeight: 1
+             });
+             poly.setMap(map);
+
+             var path = poly.getPath();
+
+             locations.forEach( function(loc) {
+                 
+                 var newPos = new google.maps.LatLng({'lat': parseFloat(loc['lat']), 'lng': parseFloat(loc['lng'])});
+
+                 // Because path is an MVCArray, we can simply append a new coordinate
+                 // and it will automatically appear.
+                 path.push( newPos );
+
+
+                 // Add a new marker at the new plotted point on the polyline.
+                 var marker = new google.maps.Marker({
+                     position: newPos,
+                     title: loc['city'],
+                     map: map
+                 });
+                 
+             })
+         }
+         
+         function findZoomLevelForCity(city) {
+             var result = undefined;
+             locations.some( function(elem) {
+                 if (elem['city'] == city) {
+                     result = elem['zoom'];
+                     return true;
+                 } else {
+                     return false;
+                 }
+             });
+             return result;
+         }
+         
+         $(document).ready(function(){
+             
+             var t = $('#locations').DataTable( {
+                 data: locations,
+                 columns: [{data:'lat'}, {data:'lng'}, {data:'city'}],
+                 order: [], // no initial sorting
+                 paging: false,
+                 searching: false
+             });
+
+             // Draw random path from city to city
+             
+             $('#locations').on('click', 'tr', function () {
+                 var lat = parseFloat(this.childNodes[0].innerText);
+                 var lng = parseFloat(this.childNodes[1].innerText);
+                 var city = this.childNodes[2].innerText;
+                 var zoomLevel = findZoomLevelForCity(city);
+
+                 map.setCenter({lat: lat, lng: lng});
+                 
+                 var listener = google.maps.event.addListenerOnce(map, "idle", function() { 
+                     map.setZoom(zoomLevel); 
+                 });
+
+                 $.ajax({
+                     type: "GET",
+                     url: "http://de.wikipedia.org/w/api.php?action=parse&format=json&prop=text&section=0&page=" + city + "&callback=?",
+                     contentType: "application/json; charset=utf-8",
+                     async: false,
+                     dataType: "json",
+                     success: function (data, textStatus, jqXHR) {
+
+                         var markup = data.parse.text["*"];
+                         var blurb = $('<div></div>').html(markup);
+                         // remove links as they will not work
+                         blurb.find('a').each(function() { $(this).replaceWith($(this).html()); });
+                         // remove any references
+                         blurb.find('sup').remove();
+                         // remove cite error
+                         blurb.find('.mw-ext-cite-error').remove();
+                         $('#wikiInfo').html($(blurb).find('p'));
+                     },
+                     error: function (errorMessage) {
+                         // TODO notify error
+                     }
+                 });
+             });
+         });
+
+         var app = angular.module('mapExplorer', []);
+         app.controller('mapCtrl', function($scope){
+             $scope.zoom = -1;
+         });
+        </script>
+    </body>
+</html>

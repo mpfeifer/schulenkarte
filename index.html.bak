@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+        <meta charset="utf-8">
+        <title>Marker Clustering</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>        
+        <link rel="stylesheet" href="//cdn.datatables.net/1.10.15/css/jquery.dataTables.min.css" />
+        <script src="//cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+        <script async defer
+                src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAk2R2Mz0wcPeCSXaoqgs3cloYb1ZZgZuw&callback=initMap">
+        </script>
+
+        <style>
+         /* Always set the map height explicitly to define the size of the div
+          * element that contains the map. */
+         #map {
+             height: 400px;
+             width: 400px;
+         }
+         /* Optional: Makes the sample page fill the window. */
+         html, body {
+             height: 100%;
+             margin: 0;
+             padding: 0;
+         }
+         #tablayout {
+             width:100%
+         }
+        </style>
+    </head>
+    <body>
+        <table id="tablayout">
+            <tr>
+                <td style="width:450px, height: 450px, vertial-align:top; padding: 25px 25px 0 25px">
+                    <div id="map"></div>
+                </td>
+                <td style="vertical-align:top; padding: 25px 25px 0 25px">
+                    <table id="locations" class="display">
+                        <thead>
+                            <tr>
+                                <th>Latitude</th>
+                                <th>Longitude</th>
+                                <th>City</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <script >
+         var map;
+         
+         function initMap() {
+
+             map = new google.maps.Map(document.getElementById('map'), {
+                 zoom: 8,
+                 center: {lat: 50.7764, lng: 6.08342}
+             });
+
+         }
+
+         var locations = [
+             {"lat": "50.7764", "lng": "6.08342", "city": "Aachen", "zoom": 1},
+             {"lat": "50.81809", "lng": "6.1347", "city": "Würselen", "zoom": 2},
+             {"lat": "52.521918", "lng": "13.413215", "city": "Berlin", "zoom": 3},
+             {"lat": "53.551086", "lng": "9.993682", "city": "Hamburg", "zoom": 4},
+             {"lat": "50.941357", "lng": "6.958307", "city": "Köln", "zoom": 1},
+             {"lat": "50.110924", "lng": "8.682127", "city": "Frankfurt", "zoom": 5},
+             {"lat": "48.137154", "lng": "11.576124", "city": "München", "zoom": 6},
+             {"lat": "51.22172", "lng": "6.77616", "city": "Düsseldorf", "zoom": 7},
+             {"lat": "51.050407", "lng": "13.73762", "city": "Dresden", "zoom": 8},
+             {"lat": "51.343479", "lng": "12.387772", "city": "Leipzig", "zoom": 9}
+         ];
+         
+         $(document).ready(function(){
+             var t = $('#locations').DataTable(
+                 {
+                     data: locations,
+                     columns: [{data:'lat'}, {data:'lng'}, {data:'city'}],
+                     order: [] // no initial sorting
+                 });
+
+             $('#locations').on('click', 'tr', function () {
+                 var lat = parseFloat(this.childNodes[0].innerText);
+                 var lng = parseFloat(this.childNodes[1].innerText);
+                 var latlng = {lat: lat, lng: lng};
+                 map.setCenter(latlng);
+                 var zoomlevel = locations[this.rowindex-1];
+//                 var listener = google.maps.event.addListenerOnce(map, "idle", function() { 
+//                     map.setZoom(zoomlevel); 
+//                 });
+             });
+         });         
+        </script>
+    </body>
+</html>
